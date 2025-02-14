@@ -29,6 +29,12 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+
+
+
+
+  
+
   return (
     <AuthContext.Provider value={{ email, setEmail, logout, timeout, updateTimeout }}>
       {children}
