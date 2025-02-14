@@ -1,0 +1,57 @@
+@import "~antd/dist/antd.dark.css";
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen", "Ubuntu", "Cantarell", "Fira Sans",
+    "Droid Sans", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #141414;
+}
+
+.ant-layout {
+  background: #141414;
+}
+
+.ant-layout-sider {
+  background: #1f1f1f;
+}
+
+.ant-menu-dark {
+  background: #1f1f1f;
+}
+
+.ant-layout-header {
+  background: #1f1f1f;
+}
+
+.ant-layout-content {
+  background: #141414;
+}
+
+.ant-card {
+  background: #1f1f1f;
+}
+
+.ant-table {
+  background: #1f1f1f;
+}
+
+.ant-table-thead > tr > th {
+  background: #141414;
+}
+
+.ant-input {
+  background: #141414;
+}
+
+.ant-btn-primary {
+  background: #1890ff;
+  border-color: #1890ff;
+}
+
+.ant-btn-primary:hover {
+  background: #40a9ff;
+  border-color: #40a9ff;
+}
+
