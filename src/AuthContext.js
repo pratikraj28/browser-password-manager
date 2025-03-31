@@ -14,7 +14,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateTimeout = (newTimeout) => {
-    setTimeOut(newTimeout); // Update timeout value in state
+    setTimeOut(newTimeout);
     const userData = JSON.parse(localStorage.getItem('user')) || {};
     userData.timeout = newTimeout;
     localStorage.setItem('user', JSON.stringify(userData));
@@ -28,7 +28,6 @@ export const AuthProvider = ({ children }) => {
       setTimeOut(userData.timeout);
     }
   }, []);
-
 
 
 

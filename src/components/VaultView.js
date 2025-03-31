@@ -23,6 +23,8 @@ import React from "react";
 import PasswordDialog from './PasswordDialog';
 import { AuthContext } from "../AuthContext";
 import { useContext } from "react";
+import ShareIcon from "@mui/icons-material/Share";
+import DashboardView from './DashboardView'; // Import the DashboardView component
 
 const VaultView = () => {
   const [passwords, setPasswords] = useState([]);
@@ -32,15 +34,16 @@ const VaultView = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editPasswordData, setEditPasswordData] = useState(null);
   const { logout, email } = useContext(AuthContext);
+  const [passwordStrength, setPasswordStrength] = useState("Weak");
 
   useEffect(() => {
     setNewPassword({ website: "", username: "", password: "" });
     fetchPasswords();
   }, []);
+
   const fetchPasswords = async () => {
     try {
       const response = await fetch(`http://127.0.0.1:5000/get-passwords?email=${email}`);
-
       const data = await response.json();
 
       if (Array.isArray(data)) {
@@ -52,16 +55,13 @@ const VaultView = () => {
       console.error("Error fetching passwords:", error);
     }
   };
-  
+
   const deletePassword = async (website, username) => {
     try {
-
-
       const isConfirmed = window.confirm("Are you sure you want to delete this password?");
-
-  if (!isConfirmed) {
-    return;
-  }
+      if (!isConfirmed) {
+        return;
+      }
 
       const response = await fetch("http://127.0.0.1:5000/delete-password", {
         method: "DELETE",
@@ -150,7 +150,6 @@ const VaultView = () => {
       console.error("Error editing password:", error);
     }
   };
-  
 
   const togglePasswordVisibility = (website, username) => {
     setVisiblePassword((prev) => ({
@@ -176,10 +175,70 @@ const VaultView = () => {
       });
   };
 
+  const handleSharePassword = async (website, username, password) => {
+    const expiryTime = prompt("Enter expiry time in minutes:");
+    if (!expiryTime || isNaN(expiryTime)) {
+      alert("Invalid expiry time!");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://127.0.0.1:5000/generate-share-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          website,
+          username,
+          password,
+          expiry: parseInt(expiryTime),
+        }),
+      });
+
+      const result = await response.json();
+      if (result.status === "success") {
+        navigator.clipboard.writeText(result.shareable_link);
+        alert("Shareable link copied to clipboard!");
+      } else {
+        console.error(result.message);
+      }
+    } catch (error) {
+      console.error("Error generating shareable link:", error);
+    }
+  };
+
+  const calculatePasswordStrength = (passwords) => {
+    if (!passwords || passwords.length === 0) return "Weak"; // No passwords stored
+
+    let score = 0;
+    passwords.forEach(({ password }) => {
+      if (password.length >= 12) score += 3;
+      else if (password.length >= 8) score += 2;
+      else score += 1;
+
+      if (/[A-Z]/.test(password)) score += 1;
+      if (/[0-9]/.test(password)) score += 1;
+      if (/[\W_]/.test(password)) score += 2;
+    });
+
+    const averageScore = score / passwords.length;
+
+    if (averageScore >= 5) return "Strong";
+    if (averageScore >= 3) return "Good";
+    return "Weak";
+  };
+
+  // Update password strength whenever passwords change
+  useEffect(() => {
+    setPasswordStrength(calculatePasswordStrength(passwords));
+  }, [passwords]);
+
   return (
     <>
+      {/* Pass the passwordStrength to the DashboardView component */}
+      {/* <DashboardView passwordStrength={passwordStrength} /> */}
+
       <Typography variant="h5" gutterBottom>
-      <br></br>
         Password Vault
       </Typography>
       <Button
@@ -215,7 +274,7 @@ const VaultView = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {Array.isArray(passwords) && passwords.map((pw) => (  // Check if passwords is an array before calling .map()
+            {Array.isArray(passwords) && passwords.map((pw) => (
               <TableRow key={pw.website + pw.username}>
                 <TableCell>{pw.website}</TableCell>
                 <TableCell>{pw.username}</TableCell>
@@ -249,6 +308,13 @@ const VaultView = () => {
                     onClick={() => handleCopyPassword(pw.password)}
                   >
                     <FileCopyIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => handleSharePassword(pw.website, pw.username, pw.password)}
+                  >
+                    <ShareIcon />
                   </IconButton>
                 </TableCell>
               </TableRow>

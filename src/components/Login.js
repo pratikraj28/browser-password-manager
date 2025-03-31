@@ -299,7 +299,7 @@ const LoginPage = () => {
                 </button>
               </div>
 
-              <button type="submit" className="btn btn-success w-100" disabled={isRegisterButtonDisabled}>
+              <button type="submit" className="btn btn-success w-100">
                 Register
               </button>
             </form>

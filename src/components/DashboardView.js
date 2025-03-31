@@ -9,14 +9,14 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-} from "@mui/material"
-import { Lock as LockIcon, Add as AddIcon, Security as SecurityIcon, Share as ShareIcon } from "@mui/icons-material"
+} from "@mui/material";
+import { Lock as LockIcon, Add as AddIcon, Security as SecurityIcon, Share as ShareIcon } from "@mui/icons-material";
 
-const DashboardView = () => {
+const DashboardView = ({ passwordStrength, recentActivity = [] }) => {  // Add default value for recentActivity
   return (
     <>
       <Typography variant="h4" gutterBottom>
-        <br></br>
+        <br />
         Welcome to Your Password Manager
       </Typography>
       <Grid container spacing={5}>
@@ -27,7 +27,7 @@ const DashboardView = () => {
                 Password Strength
               </Typography>
               <Typography variant="body1">
-                Your overall password strength is: <strong>Good</strong>
+                Your overall password strength is: <strong>{passwordStrength}</strong>
               </Typography>
             </CardContent>
             <CardActions>
@@ -37,6 +37,7 @@ const DashboardView = () => {
             </CardActions>
           </Card>
         </Grid>
+
         <Grid item xs={12} md={6}>
           <Card>
             <CardContent>
@@ -44,18 +45,23 @@ const DashboardView = () => {
                 Recent Activity
               </Typography>
               <List>
-                <ListItem>
-                  <ListItemIcon>
-                    <LockIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Password changed for example.com" secondary="2 days ago" />
-                </ListItem>
-                <ListItem>
-                  <ListItemIcon>
-                    <AddIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="New password added for github.com" secondary="1 week ago" />
-                </ListItem>
+                {recentActivity.length > 0 ? (
+                  recentActivity.map((activity, index) => (
+                    <ListItem key={index}>
+                      <ListItemIcon>
+                        <LockIcon />
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={`${activity.action} for ${activity.website}`}
+                        secondary={`${activity.time} by ${activity.username}`}
+                      />
+                    </ListItem>
+                  ))
+                ) : (
+                  <ListItem>
+                    <ListItemText primary="No recent activity" />
+                  </ListItem>
+                )}
               </List>
             </CardContent>
             <CardActions>
@@ -65,6 +71,7 @@ const DashboardView = () => {
             </CardActions>
           </Card>
         </Grid>
+
         <Grid item xs={12}>
           <Card>
             <CardContent>
@@ -93,8 +100,7 @@ const DashboardView = () => {
         </Grid>
       </Grid>
     </>
-  )
-}
+  );
+};
 
-export default DashboardView
-
+export default DashboardView;

@@ -6,16 +6,15 @@ import time
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from cryptography.fernet import Fernet  # AES encryption for passwords
+from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import padding
 import os
 import base64
 
-# Key and IV generation (for AES encryption)
-key = os.urandom(32)  # AES-256 requires a 32-byte key
-iv = os.urandom(16)   # Initialization Vector (16 bytes for AES)
+key = os.urandom(32)
+iv = os.urandom(16)
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
@@ -24,37 +23,28 @@ CORS(app, origins=["http://localhost:3000"])
 client = MongoClient("mongodb://localhost:27017/")
 db = client["Project"]
 users_collection = db["users"]
-vault_collection = db["vault"]  # New collection for passwords
+vault_collection = db["vault"]
 
 otp_storage = {}
 
-# Generate a key for AES encryption
-key = b"mysecretaeskey16"  # Exactly 16 bytes for AES-128
- # Example: AES-128 key (16 bytes)
+key = b"mysecretaeskey16" 
 
-# Ensure the key length is valid (16, 24, or 32 bytes)
 if len(key) not in [16, 24, 32]:
     raise ValueError("Encryption key must be 16, 24, or 32 bytes long")
 
-# Function to encrypt the password
 def encrypt_password(plain_password):
     try:
-        # Generate a random 16-byte IV for encryption
         iv = os.urandom(16)
 
-        # Padding to ensure the password length is a multiple of block size (16 bytes)
         padder = padding.PKCS7(128).padder()
         padded_password = padder.update(plain_password.encode()) + padder.finalize()
 
-        # Create cipher object with AES and CBC mode
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
         encryptor = cipher.encryptor()
 
-        # Encrypt the padded password
         encrypted_password = encryptor.update(padded_password) + encryptor.finalize()
 
-        # Combine IV and encrypted password, then encode as Base64
-        encrypted_data = iv + encrypted_password  # IV + encrypted data
+        encrypted_data = iv + encrypted_password
         encrypted_data_b64 = base64.urlsafe_b64encode(encrypted_data).decode()
 
         return encrypted_data_b64
@@ -64,28 +54,21 @@ def encrypt_password(plain_password):
         return None
 
 
-# Function to decrypt the password
 def decrypt_password(encrypted_password_b64):
     try:
-        # Decode the Base64-encoded encrypted password (with IV prepended)
         encrypted_data = base64.urlsafe_b64decode(encrypted_password_b64)
 
-        # Extract the IV (first 16 bytes) and the encrypted password
-        iv = encrypted_data[:16]  # First 16 bytes are the IV
-        encrypted_password_bytes = encrypted_data[16:]  # Remaining bytes are the encrypted password
+        iv = encrypted_data[:16]
+        encrypted_password_bytes = encrypted_data[16:]
 
-        # Create cipher object with AES and CBC mode
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
         decryptor = cipher.decryptor()
 
-        # Decrypt the encrypted password
         decrypted_padded_password = decryptor.update(encrypted_password_bytes) + decryptor.finalize()
 
-        # Unpad the decrypted password using PKCS7 padding
-        unpadder = padding.PKCS7(128).unpadder()  # PKCS7 unpadding
+        unpadder = padding.PKCS7(128).unpadder()
         decrypted_password = unpadder.update(decrypted_padded_password) + unpadder.finalize()
 
-        # Return the decrypted password as a string
         return decrypted_password.decode()
 
     except ValueError as e:
@@ -186,17 +169,16 @@ def set_auto_logout():
     try:
         data = request.json
         email = data.get("email")
-        timeout = data.get("timeout")  # Time in minutes
+        timeout = data.get("timeout")
 
         # Validate input
         if not email or timeout is None:
             print(email, timeout)
             return jsonify({"status": "error", "message": "Missing email or timeout"}), 400
 
-        # Update the timeout field in the user document
         users_collection.update_one(
-            {"email": email},  # Query to find the user by email
-            {'$set': {'timeout': float(timeout)}}  # Update the timeout field
+            {"email": email},
+            {'$set': {'timeout': float(timeout)}}
         )
 
         return jsonify({"status": "success", "message": "Auto-logout updated successfully"})
@@ -253,30 +235,26 @@ def verify_otp():
 def add_password():
     try:
         data = request.get_json()
-        email = data.get('email')  # Extract the email from the request body
+        email = data.get('email')
         website = data.get('website')
         username = data.get('username')
         password = data.get('password')
 
         print(email, username, website, username, password)
-        # Validate required fields
         if not email or not website or not username or not password:
             return jsonify({"status": "error", "message": "All fields are required."}), 400
 
-        # Encrypt password before saving
         encrypted_password = encrypt_password(password)
 
         if not encrypted_password:
             return jsonify({"status": "error", "message": "Error encrypting password."}), 500
 
-        # If email exists, add the password to the user's array
         result = vault_collection.update_one(
-            {"email": email},  # Find the user by email
+            {"email": email},
             {"$push": {"passwords": {"website": website, "username": username, "password": encrypted_password}}},
-            upsert=True  # If no document is found with the email, create a new document
+            upsert=True
         )
 
-        # After updating or creating the document, check for success
         if result.matched_count > 0 or result.upserted_id:
             return jsonify({"status": "success", "message": "Password stored successfully!"}), 200
         else:
@@ -289,7 +267,6 @@ def add_password():
 from bson import ObjectId
 from flask import jsonify
 
-# Function to convert ObjectId to string
 def object_id_to_str(obj):
     if isinstance(obj, ObjectId):
         return str(obj)
@@ -298,18 +275,16 @@ def object_id_to_str(obj):
 @app.route('/get-passwords', methods=['GET'])
 def get_passwords():
     try:
-        email = request.args.get('email')  # Get email from the request parameters
+        email = request.args.get('email')
         if not email:
             return jsonify({"status": "error", "message": "Email is required."}), 400
 
-        # Retrieve user's passwords based on email
         user_data = vault_collection.find_one({"email": email})
         if not user_data or "passwords" not in user_data:
             return jsonify({"status": "error", "message": "No passwords found for this email."}), 404
 
         passwords = []
         for pw in user_data["passwords"]:
-            # Decrypt password before sending
             decrypted_password = decrypt_password(pw['password'])
             if decrypted_password:
                 pw["password"] = decrypted_password
@@ -358,7 +333,6 @@ def delete_password():
         if not email or not website or not username:
             return jsonify({"status": "error", "message": "Email, website, and username are required."}), 400
 
-        # Remove password entry from the user's passwords array
         result = vault_collection.update_one(
             {"email": email},
             {"$pull": {"passwords": {"website": website, "username": username}}}
@@ -380,13 +354,12 @@ def edit_password():
         website = data.get('website')
         username = data.get('username')
         new_password = data.get('password')
-        new_website = data.get('new_website')  # New website field
-        new_username = data.get('new_username')  # New username field
+        new_website = data.get('new_website')
+        new_username = data.get('new_username')
 
         if not email or not website or not username or (not new_password and not new_website and not new_username):
             return jsonify({"status": "error", "message": "All fields are required."}), 400
 
-        # Prepare update payload
         update_data = {}
         if new_password:
             encrypted_password = encrypt_password(new_password)
@@ -396,7 +369,6 @@ def edit_password():
         if new_username:
             update_data["username"] = new_username
 
-        # Find and update the password entry
         result = vault_collection.update_one(
             {"email": email, "passwords.website": website, "passwords.username": username},
             {"$set": {"passwords.$.password": update_data.get("password"),
@@ -431,7 +403,7 @@ def enable_mfa():
 
 
 
-@app.route('/secure-login', methods=['POST'])  # New name
+@app.route('/secure-login', methods=['POST'])
 def secure_login():
     data = request.get_json()
     email = data.get('email')
