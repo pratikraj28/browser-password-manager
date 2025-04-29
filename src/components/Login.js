@@ -366,6 +366,17 @@ const LoginPage = () => {
                   {showLoginPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
+
+              {/* 🔑 Forgot Password Link Here */}
+  <p className="text-center mt-3">
+    <span
+      onClick={() => navigate("/forgot-password")}
+      style={{ color: "#3498db", cursor: "pointer", fontWeight: "500", fontSize: "16px" }}
+    >
+      Forgot Password?
+    </span>
+  </p>
+
               <button type="submit" className="btn btn-success w-100" disabled={isButtonDisabled}>
                 Login
               </button>

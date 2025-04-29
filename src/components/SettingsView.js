@@ -1,12 +1,13 @@
 import { useState, useEffect, useContext } from "react";
-import { 
-  Typography, List, ListItem, ListItemIcon, ListItemText, 
-  Button, Dialog, DialogTitle, DialogContent, 
-  DialogActions, TextField, MenuItem, Select, IconButton 
+import {
+  Typography, List, ListItem, ListItemIcon, ListItemText,
+  Button, Dialog, DialogTitle, DialogContent,
+  DialogActions, TextField, MenuItem, Select, IconButton,
+  LinearProgress, Snackbar, Alert
 } from "@mui/material";
-import { 
-  ExitToApp as ExitToAppIcon, 
-  VpnKey as VpnKeyIcon, Visibility, VisibilityOff 
+import {
+  ExitToApp as ExitToAppIcon,
+  VpnKey as VpnKeyIcon, Visibility, VisibilityOff
 } from "@mui/icons-material";
 import { AuthContext } from "../AuthContext";
 
@@ -17,11 +18,18 @@ const SettingsView = () => {
   const [openPasswordDialog, setOpenPasswordDialog] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordStrength, setPasswordStrength] = useState("Weak");
+
   const [autoLogoutOptions] = useState([0.5, 1, 5, 10, 15, 30, 60]);
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Fetch user settings from backend
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+
+  const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
+
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -64,7 +72,44 @@ const SettingsView = () => {
     }
   };
 
+  const evaluatePasswordStrength = (password) => {
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[\W_]/.test(password)) score++;
+
+    if (score >= 4) return "Strong";
+    if (score >= 3) return "Good";
+    return "Weak";
+  };
+
+  const getStrengthColor = () => {
+    if (passwordStrength === "Strong") return "success";
+    if (passwordStrength === "Good") return "warning";
+    return "error";
+  };
+
+  useEffect(() => {
+    setPasswordStrength(evaluatePasswordStrength(newPassword));
+  }, [newPassword]);
+
   const handleChangePassword = async () => {
+    if (newPassword !== confirmPassword) {
+      setSnackbar({ open: true, message: "New password and confirm password do not match.", severity: "error" });
+      return;
+    }
+
+    const strength = evaluatePasswordStrength(newPassword);
+    if (strength === "Weak") {
+      setSnackbar({
+        open: true,
+        message: "Please choose a stronger password (at least 8 characters, mix of uppercase, numbers, symbols).",
+        severity: "warning"
+      });
+      return;
+    }
+
     try {
       const response = await fetch("http://127.0.0.1:5000/change-password", {
         method: "POST",
@@ -73,15 +118,17 @@ const SettingsView = () => {
       });
 
       const data = await response.json();
-      alert(data.message);
+      setSnackbar({ open: true, message: data.message, severity: data.status === "success" ? "success" : "error" });
+
       if (data.status === "success") {
         setOpenPasswordDialog(false);
         setOldPassword("");
         setNewPassword("");
+        setConfirmPassword("");
       }
     } catch (error) {
       console.error("Error changing password:", error);
-      alert("Failed to change password. Please try again.");
+      setSnackbar({ open: true, message: "Failed to change password. Please try again.", severity: "error" });
     }
   };
 
@@ -90,13 +137,12 @@ const SettingsView = () => {
       <br />
       <Typography variant="h5" gutterBottom>Settings</Typography>
       <List>
-        {/* Auto-Logout Duration Selection */}
         <ListItem>
           <ListItemIcon><ExitToAppIcon /></ListItemIcon>
           <ListItemText primary="Auto-Logout Duration" />
           <Select
             value={autoLogout}
-            onChange={handleAutoLogoutChange} 
+            onChange={handleAutoLogoutChange}
             style={{ marginLeft: "auto", minWidth: 100 }}
           >
             {autoLogoutOptions.map((option) => (
@@ -107,7 +153,6 @@ const SettingsView = () => {
           </Select>
         </ListItem>
 
-        {/* Change Master Password */}
         <ListItem>
           <ListItemIcon><VpnKeyIcon /></ListItemIcon>
           <ListItemText primary="Change Master Password" />
@@ -115,16 +160,15 @@ const SettingsView = () => {
         </ListItem>
       </List>
 
-      {/* Change Password Modal */}
       <Dialog open={openPasswordDialog} onClose={() => setOpenPasswordDialog(false)}>
         <DialogTitle>Change Password</DialogTitle>
         <DialogContent>
-          <TextField 
-            label="Old Password" 
-            type={showOldPassword ? "text" : "password"} 
-            fullWidth 
-            value={oldPassword} 
-            onChange={(e) => setOldPassword(e.target.value)} 
+          <TextField
+            label="Old Password"
+            type={showOldPassword ? "text" : "password"}
+            fullWidth
+            value={oldPassword}
+            onChange={(e) => setOldPassword(e.target.value)}
             margin="dense"
             InputProps={{
               endAdornment: (
@@ -138,13 +182,15 @@ const SettingsView = () => {
               ),
             }}
           />
-          <TextField 
-            label="New Password" 
-            type={showNewPassword ? "text" : "password"} 
-            fullWidth 
-            value={newPassword} 
-            onChange={(e) => setNewPassword(e.target.value)} 
+
+          <TextField
+            label="New Password"
+            type={showNewPassword ? "text" : "password"}
+            fullWidth
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
             margin="dense"
+            helperText={`Password Strength: ${passwordStrength}`}
             InputProps={{
               endAdornment: (
                 <IconButton
@@ -157,12 +203,55 @@ const SettingsView = () => {
               ),
             }}
           />
+
+          <LinearProgress
+            variant="determinate"
+            value={passwordStrength === "Strong" ? 100 : passwordStrength === "Good" ? 60 : 30}
+            sx={{ my: 1 }}
+            color={getStrengthColor()}
+          />
+
+          <TextField
+            label="Confirm New Password"
+            type={showConfirmPassword ? "text" : "password"}
+            fullWidth
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            margin="dense"
+            InputProps={{
+              endAdornment: (
+                <IconButton
+                  position="end"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  edge="end"
+                >
+                  {showConfirmPassword ? <VisibilityOff /> : <Visibility />}
+                </IconButton>
+              ),
+            }}
+          />
         </DialogContent>
+
         <DialogActions>
           <Button onClick={() => setOpenPasswordDialog(false)}>Cancel</Button>
           <Button onClick={handleChangePassword} variant="contained">Change</Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+  open={snackbar.open}
+  autoHideDuration={4000}
+  onClose={handleCloseSnackbar}
+  anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+>
+  <Alert
+    severity={snackbar.severity}
+    onClose={handleCloseSnackbar}
+    sx={{ width: '100%' }}
+  >
+    {snackbar.message}
+  </Alert>
+</Snackbar>
     </>
   );
 };

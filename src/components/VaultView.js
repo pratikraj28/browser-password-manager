@@ -9,6 +9,10 @@ import {
   TableCell,
   IconButton,
   Paper,
+  Modal,
+  Box,
+  TextField,
+  MenuItem,
 } from "@mui/material";
 import {
   Visibility as VisibilityIcon,
@@ -24,7 +28,7 @@ import PasswordDialog from './PasswordDialog';
 import { AuthContext } from "../AuthContext";
 import { useContext } from "react";
 import ShareIcon from "@mui/icons-material/Share";
-import DashboardView from './DashboardView'; // Import the DashboardView component
+import { Visibility, VisibilityOff } from "@mui/icons-material";
 
 const VaultView = () => {
   const [passwords, setPasswords] = useState([]);
@@ -35,6 +39,15 @@ const VaultView = () => {
   const [editPasswordData, setEditPasswordData] = useState(null);
   const { logout, email } = useContext(AuthContext);
   const [passwordStrength, setPasswordStrength] = useState("Weak");
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Loading state for passwords
+  const [loadingPasswords, setLoadingPasswords] = useState(false);
+
+  // Sharing Modal states
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareDetails, setShareDetails] = useState({ email: "", expiry: 15 });
+  const [selectedToShare, setSelectedToShare] = useState(null);
 
   useEffect(() => {
     setNewPassword({ website: "", username: "", password: "" });
@@ -42,10 +55,10 @@ const VaultView = () => {
   }, []);
 
   const fetchPasswords = async () => {
+    setLoadingPasswords(true);  // Start loading
     try {
       const response = await fetch(`http://127.0.0.1:5000/get-passwords?email=${email}`);
       const data = await response.json();
-
       if (Array.isArray(data)) {
         setPasswords(data);
       } else {
@@ -53,31 +66,26 @@ const VaultView = () => {
       }
     } catch (error) {
       console.error("Error fetching passwords:", error);
+    } finally {
+      setLoadingPasswords(false);  // Stop loading
     }
   };
 
   const deletePassword = async (website, username) => {
     try {
       const isConfirmed = window.confirm("Are you sure you want to delete this password?");
-      if (!isConfirmed) {
-        return;
-      }
+      if (!isConfirmed) return;
 
       const response = await fetch("http://127.0.0.1:5000/delete-password", {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email,
-          website,
-          username,
-        }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, website, username }),
       });
 
       const result = await response.json();
       if (result.status === "success") {
         setPasswords(passwords.filter((pw) => pw.website !== website || pw.username !== username));
+        logActivity('Deleted password', website);
       } else {
         console.error(result.message);
       }
@@ -107,6 +115,7 @@ const VaultView = () => {
         setPasswords([...passwords, newPassword]);
         setNewPassword({ website: "", username: "", password: "" });
         setShowPasswordDialogState(false);
+        logActivity('Added new password', newPassword.website);
       } else {
         console.error(result.message);
       }
@@ -143,6 +152,7 @@ const VaultView = () => {
         setEditPasswordData(null);
         setIsEditMode(false);
         setShowPasswordDialogState(false);
+        logActivity('Edited password', editPasswordData.website);
       } else {
         console.error(result.message);
       }
@@ -167,80 +177,91 @@ const VaultView = () => {
 
   const handleCopyPassword = (password) => {
     navigator.clipboard.writeText(password)
-      .then(() => {
-        alert("Password copied to clipboard!");
-      })
-      .catch((err) => {
-        console.error("Failed to copy password: ", err);
-      });
+      .then(() => alert("Password copied to clipboard!"))
+      .catch((err) => console.error("Failed to copy password: ", err));
   };
 
-  const handleSharePassword = async (website, username, password) => {
-    const expiryTime = prompt("Enter expiry time in minutes:");
-    if (!expiryTime || isNaN(expiryTime)) {
-      alert("Invalid expiry time!");
+  const handleOpenShareModal = (password) => {
+    setSelectedToShare(password);
+    setShowShareModal(true);
+  };
+
+  const handleShareSubmit = async () => {
+    if (!shareDetails.email) {
+      alert("Please enter an email.");
       return;
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/generate-share-link", {
+      const response = await fetch("http://127.0.0.1:5000/share-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email,
-          website,
-          username,
-          password,
-          expiry: parseInt(expiryTime),
+          sender_email: email,
+          recipient_email: shareDetails.email,
+          website: selectedToShare.website,
+          username: selectedToShare.username,
+          password: selectedToShare.password,
+          expiry: shareDetails.expiry,
         }),
       });
 
       const result = await response.json();
       if (result.status === "success") {
-        navigator.clipboard.writeText(result.shareable_link);
-        alert("Shareable link copied to clipboard!");
+        alert("Password shared successfully via email!");
+        setShowShareModal(false);
+        setShareDetails({ email: "", expiry: 15 });
       } else {
-        console.error(result.message);
+        alert("Failed to share: " + result.message);
       }
     } catch (error) {
-      console.error("Error generating shareable link:", error);
+      console.error("Error sharing password:", error);
+      alert("Something went wrong!");
     }
   };
 
+  const logActivity = async (action, website) => {
+    try {
+      await fetch("http://127.0.0.1:5000/log-activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, action, website }),
+      });
+    } catch (err) {
+      console.error("Error logging activity:", err);
+    }
+  };
+
+  //activity
   const calculatePasswordStrength = (passwords) => {
-    if (!passwords || passwords.length === 0) return "Weak"; // No passwords stored
+    if (!passwords || passwords.length === 0) return "Weak";
 
     let score = 0;
     passwords.forEach(({ password }) => {
       if (password.length >= 12) score += 3;
       else if (password.length >= 8) score += 2;
       else score += 1;
-
       if (/[A-Z]/.test(password)) score += 1;
       if (/[0-9]/.test(password)) score += 1;
       if (/[\W_]/.test(password)) score += 2;
     });
 
     const averageScore = score / passwords.length;
-
     if (averageScore >= 5) return "Strong";
     if (averageScore >= 3) return "Good";
     return "Weak";
   };
 
-  // Update password strength whenever passwords change
   useEffect(() => {
     setPasswordStrength(calculatePasswordStrength(passwords));
   }, [passwords]);
 
   return (
     <>
-      {/* Pass the passwordStrength to the DashboardView component */}
-      {/* <DashboardView passwordStrength={passwordStrength} /> */}
-
-      <Typography variant="h5" gutterBottom>
+      <Typography variant="h5" gutterBottom sx={{ marginTop: 10 }}>
         Password Vault
       </Typography>
+
       <Button
         variant="contained"
         color="secondary"
@@ -263,65 +284,107 @@ const VaultView = () => {
         isEditMode={isEditMode}
       />
 
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Website</TableCell>
-              <TableCell>Username</TableCell>
-              <TableCell>Password</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {Array.isArray(passwords) && passwords.map((pw) => (
-              <TableRow key={pw.website + pw.username}>
-                <TableCell>{pw.website}</TableCell>
-                <TableCell>{pw.username}</TableCell>
-                <TableCell>
-                  {visiblePassword[`${pw.website}-${pw.username}`] ? pw.password : '••••••••'}
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => togglePasswordVisibility(pw.website, pw.username)}
-                  >
-                    {visiblePassword[`${pw.website}-${pw.username}`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="secondary"
-                    onClick={() => handleEditPassword(pw.website, pw.username)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => deletePassword(pw.website, pw.username)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleCopyPassword(pw.password)}
-                  >
-                    <FileCopyIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => handleSharePassword(pw.website, pw.username, pw.password)}
-                  >
-                    <ShareIcon />
-                  </IconButton>
-                </TableCell>
+      {/* Loading Indicator Section */}
+      {loadingPasswords ? (
+        <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
+          Loading Password... <span className="bouncing-dots">...</span>
+        </Typography>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>Website</TableCell>
+                <TableCell>Username</TableCell>
+                <TableCell>Password</TableCell>
+                <TableCell>Actions</TableCell>
               </TableRow>
+            </TableHead>
+            <TableBody>
+              {Array.isArray(passwords) && passwords.map((pw) => (
+                <TableRow key={pw.website + pw.username}>
+                  <TableCell>{pw.website}</TableCell>
+                  <TableCell>{pw.username}</TableCell>
+                  <TableCell>
+                    {visiblePassword[`${pw.website}-${pw.username}`] ? pw.password : '••••••••'}
+                  </TableCell>
+                  <TableCell>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => togglePasswordVisibility(pw.website, pw.username)}
+                    >
+                      {visiblePassword[`${pw.website}-${pw.username}`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="secondary"
+                      onClick={() => handleEditPassword(pw.website, pw.username)}
+                    >
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => deletePassword(pw.website, pw.username)}
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      onClick={() => handleCopyPassword(pw.password)}
+                    >
+                      <FileCopyIcon />
+                    </IconButton>
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => handleOpenShareModal(pw)}
+                    >
+                      <ShareIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+
+      <Modal open={showShareModal} onClose={() => setShowShareModal(false)}>
+        <Box
+          sx={{
+            position: "absolute", top: "50%", left: "50%",
+            transform: "translate(-50%, -50%)",
+            bgcolor: "background.paper", p: 4, borderRadius: 2, width: 400,
+            boxShadow: 24
+          }}
+        >
+          <Typography variant="h6" gutterBottom>Share Password</Typography>
+          <TextField
+            label="Recipient Email"
+            fullWidth
+            value={shareDetails.email}
+            onChange={(e) => setShareDetails({ ...shareDetails, email: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            label="Expiry (minutes)"
+            select
+            fullWidth
+            value={shareDetails.expiry}
+            onChange={(e) => setShareDetails({ ...shareDetails, expiry: parseInt(e.target.value) })}
+            sx={{ mb: 2 }}
+          >
+            {[1, 5, 10, 15, 30, 60].map((val) => (
+              <MenuItem key={val} value={val}>{val} minutes</MenuItem>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+          </TextField>
+          <Button variant="contained" color="primary" fullWidth onClick={handleShareSubmit}>
+            Share
+          </Button>
+        </Box>
+      </Modal>
     </>
   );
 };
