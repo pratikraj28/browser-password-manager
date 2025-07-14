@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import axios from "axios";
-import "./Login.css"; // use same styling as login
+import "./Login.css";
 import { useNavigate } from "react-router-dom";
 
 const ForgotPassword = () => {
@@ -17,7 +17,7 @@ const ForgotPassword = () => {
     setMessage("");
 
     try {
-      const res = await axios.post("http://127.0.0.1:5000/forgot-password", { email });
+      const res = await axios.post("https://password-manager-backend-298931957092.us-central1.run.app/forgot-password", { email });
       if (res.data.status === "success") {
         setMessage("Password reset link sent to your email.");
       } else {

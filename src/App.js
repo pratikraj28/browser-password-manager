@@ -5,8 +5,6 @@ import Register from './components/Register';
 import OtpVerification from './components/OtpVerification';
 import Dashboard from './components/Dashboard';
 import PrivateRoute from './components/PrivateRoute';
-
-// ✅ Import the new components
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 

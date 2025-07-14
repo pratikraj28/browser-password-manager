@@ -1,4 +1,6 @@
-import React, { useState, useContext } from "react"
+"use client"
+
+import { useState, useContext } from "react"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import VirtualKeyboard from "./VirtualKeyboard"
@@ -6,7 +8,7 @@ import { FaEye, FaEyeSlash } from "react-icons/fa"
 import "bootstrap/dist/css/bootstrap.min.css"
 import "./Login.css"
 import "@fontsource/poppins"
-import { AuthContext} from '../AuthContext';
+import { AuthContext } from "../AuthContext"
 
 const LoginPage = () => {
   const [email, setEmail] = useState("")
@@ -25,37 +27,38 @@ const LoginPage = () => {
   const [isRegister, setIsRegister] = useState(false)
   const [isOtpSent, setIsOtpSent] = useState(false)
   const [isOtpVerified, setIsOtpVerified] = useState(false)
-  const [loginOtp, setLoginOtp] = useState(true);
+  const [loginOtp, setLoginOtp] = useState(true)
   const navigate = useNavigate()
-  const [isRegisterButtonDisabled, setIsRegisterButtonDisabled] = useState(false);
+  const [isRegisterButtonDisabled, setIsRegisterButtonDisabled] = useState(false)
+  const baseUrl = "https://password-manager-backend-298931957092.us-central1.run.app"
 
-
-  const { setEmail: setUserEmail } = useContext(AuthContext);
+  const { setEmail: setUserEmail } = useContext(AuthContext)
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    if(loginOtp) {
-      handleLoginOtp();
+    e.preventDefault()
+    if (loginOtp) {
+      handleLoginOtp()
+    } else {
+      handleOtpVerification()
     }
-    else {
-      handleOtpVerification();
-    }
-  };
+  }
 
   const handleLoginOtp = async () => {
-
     try {
-      setErrorMessage("");
-      const response = await axios.post("http://127.0.0.1:5000/verify-otp", { email, otp })
+      setErrorMessage("")
+      const response = await axios.post(baseUrl + "/verify-otp", { email, otp })
 
-      if (response.data.status === 'success') {
+      if (response.data.status === "success") {
         setIsOtpVerified(true)
         setSuccessMessage("OTP Verified successfully!")
-        setIsRegister(false);   
-        setUserEmail(email);
-        localStorage.setItem('user',JSON.stringify({
-          email
-        }));
+        setIsRegister(false)
+        setUserEmail(email)
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            email,
+          }),
+        )
         setTimeout(() => {
           navigate("/dashboard")
         }, 2000)
@@ -67,82 +70,57 @@ const LoginPage = () => {
     }
   }
 
-
-  // const handleLogin = async (e) => {
-  //   e.preventDefault()
-  //   setIsButtonDisabled(true)
-  //   setErrorMessage("")
-  //   setSuccessMessage("");
-
-  //   try {
-  //     const response = await axios.post("http://127.0.0.1:5000/login", { email, password })
-
-  //     if (response.data.status === "success") {
-  //       setSuccessMessage("OTP sent successfully!")
-  //       setIsOtpSent(true);
-  //       setIsOtpVerified(false);
-  //     } else {
-  //       setErrorMessage(response.data.message)
-  //     }
-  //   } catch (error) {
-  //     console.error("Error logging in:", error)
-  //     setErrorMessage("An error occurred. Please try again.")
-  //   } finally {
-  //     setIsButtonDisabled(false)
-  //   }
-  // }
-
   const handleLogin = async (e) => {
-    e.preventDefault();
-    setIsButtonDisabled(true);
-    setErrorMessage("");
-    setSuccessMessage("");
+    e.preventDefault()
+    setIsButtonDisabled(true)
+    setErrorMessage("")
+    setSuccessMessage("")
 
     try {
-      const response = await axios.post("http://127.0.0.1:5000/login", { email, password });
+      const response = await axios.post(baseUrl + "/login", { email, password })
 
       if (response.data.status === "success") {
-        setSuccessMessage("OTP sent successfully!");
-        setIsOtpSent(true);
-        setIsOtpVerified(false);
-        localStorage.setItem("email", email); // Store email in localStorage
+        setSuccessMessage("OTP sent successfully!")
+        setIsOtpSent(true)
+        setIsOtpVerified(false)
+        localStorage.setItem("email", email)
       } else {
-        setErrorMessage(response.data.message);
+        setErrorMessage(response.data.message)
       }
     } catch (error) {
-      console.error("Error logging in:", error);
-      setErrorMessage("An error occurred. Please try again.");
+      console.error("Error logging in:", error)
+      setErrorMessage("An error occurred. Please try again.")
     } finally {
-      setIsButtonDisabled(false);
+      setIsButtonDisabled(false)
     }
-};
-
+  }
 
   const handleRegister = async (e) => {
     e.preventDefault()
-
-  setIsRegisterButtonDisabled(true);
+    setIsRegisterButtonDisabled(true)
 
     if (registerPassword !== confirmPassword) {
       setErrorMessage("Passwords do not match!")
+      setIsRegisterButtonDisabled(false)
       return
     }
 
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d])[^\s]{8,}$/;
 
-  if (!passwordRegex.test(registerPassword)) {
-    setErrorMessage(
-      <div style={{ fontSize: "10px" }}>
-        Password must be 8+ characters, with uppercase, lowercase, number, and special character.
-      </div>
-    );
-    return;
-  }
-  
+
+    if (!passwordRegex.test(registerPassword)) {
+      setErrorMessage(
+        <div style={{ fontSize: "12px" }}>
+          Password must be 8+ characters, with uppercase, lowercase, number, and special character.
+        </div>,
+      )
+      setIsRegisterButtonDisabled(false)
+      return
+    }
 
     try {
-      setErrorMessage("");
-      const response = await axios.post("http://127.0.0.1:5000/register", { email, username, password: registerPassword })
+      setErrorMessage("")
+      const response = await axios.post(baseUrl + "/register", { email, username, password: registerPassword })
 
       if (response.data.status === "success") {
         setSuccessMessage("OTP sent to your email.")
@@ -153,24 +131,25 @@ const LoginPage = () => {
     } catch (error) {
       console.error("Error registering:", error)
       setErrorMessage("An error occurred. Please try again.")
+    } finally {
+      setIsRegisterButtonDisabled(false)
     }
   }
 
   const handleOtpVerification = async () => {
-
     try {
-      setErrorMessage("");
-      const response = await axios.post("http://127.0.0.1:5000/verify-register-otp", {email, otp })
+      setErrorMessage("")
+      const response = await axios.post(baseUrl + "/verify-register-otp", { email, otp })
 
-      console.log(response);
+      console.log(response)
 
-      if (response.data.status === 'success') {
+      if (response.data.status === "success") {
         setIsOtpVerified(true)
         setSuccessMessage("OTP Verified successfully!")
-        setIsRegister(false);
-        setLoginOtp(true);
-        setOtp("");
-        setSuccessMessage("");
+        setIsRegister(false)
+        setLoginOtp(true)
+        setOtp("")
+        setSuccessMessage("")
         setTimeout(() => {
           navigate("/")
         }, 2000)
@@ -269,7 +248,7 @@ const LoginPage = () => {
                 />
               </div>
 
-              <div className="mb-2 position-relative">
+              <div className="mb-2 position-relative input-with-toggle">
                 <input
                   type={showRegisterPassword ? "text" : "password"}
                   className="form-control"
@@ -284,7 +263,7 @@ const LoginPage = () => {
                 </button>
               </div>
 
-              <div className="mb-2 position-relative">
+              <div className="mb-2 position-relative input-with-toggle">
                 <input
                   type={showConfirmPassword ? "text" : "password"}
                   className="form-control"
@@ -295,22 +274,22 @@ const LoginPage = () => {
                   required
                 />
                 <button type="button" className="password-toggle-btn" onClick={toggleConfirmPasswordVisibility}>
-                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}  
+                  {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                 </button>
               </div>
 
-              <button type="submit" className="btn btn-success w-100">
-                Register
+              <button type="submit" className="btn btn-success w-100" disabled={isRegisterButtonDisabled}>
+                {isRegisterButtonDisabled ? "Registering..." : "Register"}
               </button>
             </form>
             <p className="text-center mt-3">
               Already have an account?{" "}
               <span
                 onClick={() => {
-                  setIsRegister(false);
-                  setLoginOtp(true);
-                  setEmail("");
-                  setPassword("");
+                  setIsRegister(false)
+                  setLoginOtp(true)
+                  setEmail("")
+                  setPassword("")
                 }}
                 style={{ color: "#3498db", cursor: "pointer", fontWeight: "500" }}
               >
@@ -350,7 +329,7 @@ const LoginPage = () => {
                   required
                 />
               </div>
-              <div className="mb-5 position-relative">
+              <div className="mb-5 position-relative input-with-toggle">
                 <input
                   type={showLoginPassword ? "text" : "password"}
                   className="form-control"
@@ -367,27 +346,25 @@ const LoginPage = () => {
                 </button>
               </div>
 
-              {/* 🔑 Forgot Password Link Here */}
-  <p className="text-center mt-3">
-    <span
-      onClick={() => navigate("/forgot-password")}
-      style={{ color: "#3498db", cursor: "pointer", fontWeight: "500", fontSize: "16px" }}
-    >
-      Forgot Password?
-    </span>
-  </p>
+              <p className="text-center mt-3">
+                <span
+                  onClick={() => navigate("/forgot-password")}
+                  style={{ color: "#3498db", cursor: "pointer", fontWeight: "500", fontSize: "16px" }}
+                >
+                  Forgot Password?
+                </span>
+              </p>
 
               <button type="submit" className="btn btn-success w-100" disabled={isButtonDisabled}>
-                Login
+                {isButtonDisabled ? "Logging in..." : "Login"}
               </button>
             </form>
             <p className="text-center mt-3">
               Don't have an account?{" "}
               <span
                 onClick={() => {
-                  setIsRegister(true);
-                  setLoginOtp(false);
-
+                  setIsRegister(true)
+                  setLoginOtp(false)
                 }}
                 style={{ color: "#3498db", cursor: "pointer", fontWeight: "500" }}
               >
@@ -397,6 +374,7 @@ const LoginPage = () => {
           </>
         )}
       </div>
+
       {showKeyboard && (
         <div className="virtual-keyboard-container">
           <VirtualKeyboard

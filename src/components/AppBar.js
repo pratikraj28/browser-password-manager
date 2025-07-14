@@ -6,7 +6,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import { AuthContext } from "../AuthContext";
 import { useNavigate } from "react-router-dom";
-import ProfileModal from "./ProfileModal"; // import the modal
+import ProfileModal from "./ProfileModal";
 
 const AppBar = ({
   handleDrawerToggle,
@@ -28,17 +28,17 @@ const AppBar = ({
   const fetchProfile = async () => {
     if (!email) return;
     try {
-      const res = await fetch("http://127.0.0.1:5000/get-user-profile", {
+      const res = await fetch("https://password-manager-backend-298931957092.us-central1.run.app/get-user-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
 
-      // ✅ Debug log here
+      // Debug log here
       console.log("User data updated:", data.user);
   
-      // ✅ FIXED: proper check and set
+      // FIXED: proper check and set
       if (data.status === "success" && data.user) {
         setUserData(data.user);
       } else {

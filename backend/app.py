@@ -34,15 +34,36 @@ GCS_BUCKET = "vault-password-gcs"
 key = os.urandom(32)
 iv = os.urandom(16)
 
+access_key = os.getenv('AWS_ACCESS_KEY_ID')
+secret_key = os.getenv('AWS_SECRET_ACCESS_KEY')
+region = os.getenv('AWS_DEFAULT_REGION')
+
+s3_client = boto3.client(
+    's3',
+    aws_access_key_id=access_key,
+    aws_secret_access_key=secret_key,
+    region_name=region
+)
+
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
-CORS(app, origins=["http://localhost:3000"])
+# CORS(app, origins=["http://localhost:3000"])
+CORS(app, origins=["https://password-manager-frontend-298931957092.us-central1.run.app"])
 
-client = MongoClient("mongodb://localhost:27017/")
-db = client["Project"]
+# client = MongoClient("mongodb://localhost:27017/")
+# db = client["Project"]
+# users_collection = db["users"]
+# vault_collection = db["vault"]
+# activities_collection = db['recent_activities']
+
+# Replace this with your actual Atlas connection string
+client = MongoClient("mongodb+srv://pratikraj590:QCPa25IuH8bkxF1n@cluster0.ifoletc.mongodb.net/passwordManager?retryWrites=true&w=majority&tls=true&appName=Cluster0")
+
+
+db = client["passwordManager"]
+
 users_collection = db["users"]
-vault_collection = db["vault"]
-activities_collection = db['recent_activities']
+activities_collection = db["recent_activities"]
 
 otp_storage = {}
 shared_links = {}
@@ -129,6 +150,16 @@ def send_otp_email(email, otp):
         return False
     return True
 
+@app.route('/test-db', methods=['GET'])
+def test_db():
+    try:
+        users = list(users_collection.find().limit(5))
+        for user in users:
+            user['_id'] = str(user['_id'])
+        return jsonify({"status": "success", "users": users})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)})
+
 
 @app.route('/register', methods=['POST'])
 def register_user():
@@ -210,7 +241,6 @@ def set_auto_logout():
         email = data.get("email")
         timeout = data.get("timeout")
 
-        # Validate input
         if not email or timeout is None:
             print(email, timeout)
             return jsonify({"status": "error", "message": "Missing email or timeout"}), 400
@@ -286,7 +316,7 @@ def add_password():
 
         encrypted = encrypt_password(password)
 
-        # 1. Fetch the current vault
+        # 1. To fetch the current vault
         vault = get_vault(email)
         if not vault:
             vault = {}
@@ -294,7 +324,7 @@ def add_password():
         if website not in vault:
             vault[website] = []
 
-        # 2. Append new entry
+        # 2. For new entry
         vault[website].append({
             "username": username,
             "password": encrypted
@@ -347,7 +377,7 @@ def get_passwords():
                     "password": decrypted if decrypted else "Decryption Error"
                 })
 
-        return jsonify(flat_list), 200  # ✅ Return flat array
+        return jsonify(flat_list), 200
 
     except Exception as e:
         print(f"Error in /get-passwords: {e}")
@@ -390,7 +420,7 @@ def delete_password():
         if not email or not website or not username:
             return jsonify({"status": "error", "message": "Email, website, and username are required."}), 400
 
-        # Get current vault from sharded storage
+
         vault = get_vault(email)
         if not vault or website not in vault:
             return jsonify({"status": "error", "message": "Website not found"}), 404
@@ -495,7 +525,6 @@ def secure_login():
     if decrypt_password(user['password']) != password:
         return jsonify({"status": "error", "message": "Incorrect password. Please try again."})
 
-    # Check if MFA is enabled
     if user.get("mfa_enabled"):
         otp = random.randint(100000, 999999)
         otp_storage[email] = {"otp": otp, "timestamp": time.time()}
@@ -555,11 +584,9 @@ def share_password():
     password = data['password']
     expiry_minutes = data['expiry']
 
-    # Generate token and expiration
     token = str(uuid4())
     expiry_time = time.time() + (expiry_minutes * 60)
 
-    # Store in memory
     shared_links[token] = {
         "sender": sender,
         "website": website,
@@ -568,8 +595,7 @@ def share_password():
         "expires_at": expiry_time
     }
 
-    # Link to view the password
-    shared_url = f"http://localhost:5000/shared/{token}"
+    shared_url = f"https://password-manager-backend-298931957092.us-central1.run.app/shared/{token}"
     email_body = f"""
 Hi,
 
@@ -585,7 +611,6 @@ If the link has expired, please request it again.
 - Secure Vault Team
 """
 
-    # Send email with link
     if send_otp_email(email=recipient, otp=email_body):
         return jsonify({"status": "success", "message": "Password shared via link!"}), 200
     else:
@@ -610,7 +635,6 @@ def access_shared_password(token):
         password=shared_data['password']
     )
 
-# === BACKUP VAULT ===
 @app.route("/backup", methods=["POST"])
 def backup_data():
     try:
@@ -621,7 +645,6 @@ def backup_data():
         if not vault:
             return jsonify({"status": "error", "message": "No vault data to back up."}), 400
 
-        # Use the new sharded backup function
         shard_and_upload_backup(email, vault)
 
         return jsonify({"status": "success", "message": "Backup saved to GCS in shards."}), 200
@@ -631,7 +654,6 @@ def backup_data():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-# === RESTORE VAULT ===
 @app.route("/restore", methods=["POST"])
 def restore_data():
     try:
@@ -646,7 +668,6 @@ def restore_data():
         return jsonify({"status": "error", "message": str(e)}), 500
 
 
-# === BACKUP HISTORY ===
 @app.route("/get-backup-history", methods=["POST"])
 def get_backup_history():
     email = request.json.get("email")
@@ -808,7 +829,7 @@ def forgot_password():
         if not user:
             return jsonify({"status": "error", "message": "Email not registered"}), 404
 
-        reset_link = f"http://localhost:3000/reset-password?email={email}"
+        reset_link = f"https://password-manager-frontend-298931957092.us-central1.run.app/reset-password?email={email}"
 
         msg = MIMEMultipart()
         msg['From'] = "pratikraj590@gmail.com"
@@ -869,5 +890,10 @@ def forgot_reset_password():
         return jsonify({"status": "error", "message": "Something went wrong"}), 500
 
 
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
+

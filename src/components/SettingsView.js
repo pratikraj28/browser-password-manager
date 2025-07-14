@@ -25,6 +25,7 @@ const SettingsView = () => {
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const baseurl = "https://password-manager-backend-298931957092.us-central1.run.app"
 
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
@@ -33,7 +34,7 @@ const SettingsView = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:5000/get-user-settings", {
+        const response = await fetch(baseurl + "/get-user-settings", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: email })
@@ -58,7 +59,7 @@ const SettingsView = () => {
       setAutoLogout(newTimeout);
       updateTimeout(newTimeout);
 
-      const response = await fetch("http://127.0.0.1:5000/set-auto-logout", {
+      const response = await fetch(baseurl + "/set-auto-logout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email, timeout: newTimeout })
@@ -111,7 +112,7 @@ const SettingsView = () => {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/change-password", {
+      const response = await fetch(baseurl + "/change-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email, old_password: oldPassword, new_password: newPassword })

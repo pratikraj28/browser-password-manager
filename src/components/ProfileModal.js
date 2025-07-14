@@ -34,7 +34,7 @@ const ProfileModal = ({ open, handleClose, user, refreshProfile }) => {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/update-profile", {
+      const response = await fetch("https://password-manager-backend-298931957092.us-central1.run.app/update-profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

@@ -64,7 +64,7 @@ const ResetPassword = () => {
     }
 
     try {
-      const res = await axios.post("http://127.0.0.1:5000/forgot-reset-password", {
+      const res = await axios.post("https://password-manager-backend-298931957092.us-central1.run.app/forgot-reset-password", {
         email,
         token,
         password

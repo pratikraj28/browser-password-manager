@@ -41,13 +41,12 @@ const VaultView = () => {
   const [passwordStrength, setPasswordStrength] = useState("Weak");
   const [showPassword, setShowPassword] = useState(false);
 
-  // Loading state for passwords
   const [loadingPasswords, setLoadingPasswords] = useState(false);
 
-  // Sharing Modal states
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareDetails, setShareDetails] = useState({ email: "", expiry: 15 });
   const [selectedToShare, setSelectedToShare] = useState(null);
+  const baseurl = "https://password-manager-backend-298931957092.us-central1.run.app"
 
   useEffect(() => {
     setNewPassword({ website: "", username: "", password: "" });
@@ -55,9 +54,9 @@ const VaultView = () => {
   }, []);
 
   const fetchPasswords = async () => {
-    setLoadingPasswords(true);  // Start loading
+    setLoadingPasswords(true);
     try {
-      const response = await fetch(`http://127.0.0.1:5000/get-passwords?email=${email}`);
+      const response = await fetch(`${baseurl}/get-passwords?email=${email}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setPasswords(data);
@@ -67,7 +66,7 @@ const VaultView = () => {
     } catch (error) {
       console.error("Error fetching passwords:", error);
     } finally {
-      setLoadingPasswords(false);  // Stop loading
+      setLoadingPasswords(false);
     }
   };
 
@@ -76,7 +75,7 @@ const VaultView = () => {
       const isConfirmed = window.confirm("Are you sure you want to delete this password?");
       if (!isConfirmed) return;
 
-      const response = await fetch("http://127.0.0.1:5000/delete-password", {
+      const response = await fetch(baseurl + "/delete-password", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, website, username }),
@@ -96,7 +95,7 @@ const VaultView = () => {
 
   const addPassword = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:5000/add-password", {
+      const response = await fetch(baseurl + "/add-password", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -126,7 +125,7 @@ const VaultView = () => {
 
   const editPassword = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:5000/edit-password", {
+      const response = await fetch(baseurl + "/edit-password", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -193,7 +192,7 @@ const VaultView = () => {
     }
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/share-password", {
+      const response = await fetch(baseurl + "/share-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -222,7 +221,7 @@ const VaultView = () => {
 
   const logActivity = async (action, website) => {
     try {
-      await fetch("http://127.0.0.1:5000/log-activity", {
+      await fetch(baseurl + "/log-activity", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, action, website }),
@@ -232,7 +231,6 @@ const VaultView = () => {
     }
   };
 
-  //activity
   const calculatePasswordStrength = (passwords) => {
     if (!passwords || passwords.length === 0) return "Weak";
 
@@ -284,7 +282,6 @@ const VaultView = () => {
         isEditMode={isEditMode}
       />
 
-      {/* Loading Indicator Section */}
       {loadingPasswords ? (
         <Typography variant="body1" sx={{ display: 'flex', alignItems: 'center' }}>
           Loading Password... <span className="bouncing-dots">...</span>
@@ -301,51 +298,59 @@ const VaultView = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {Array.isArray(passwords) && passwords.map((pw) => (
-                <TableRow key={pw.website + pw.username}>
-                  <TableCell>{pw.website}</TableCell>
-                  <TableCell>{pw.username}</TableCell>
-                  <TableCell>
-                    {visiblePassword[`${pw.website}-${pw.username}`] ? pw.password : '••••••••'}
-                  </TableCell>
-                  <TableCell>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => togglePasswordVisibility(pw.website, pw.username)}
-                    >
-                      {visiblePassword[`${pw.website}-${pw.username}`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="secondary"
-                      onClick={() => handleEditPassword(pw.website, pw.username)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="error"
-                      onClick={() => deletePassword(pw.website, pw.username)}
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      onClick={() => handleCopyPassword(pw.password)}
-                    >
-                      <FileCopyIcon />
-                    </IconButton>
-                    <IconButton
-                      size="small"
-                      color="primary"
-                      onClick={() => handleOpenShareModal(pw)}
-                    >
-                      <ShareIcon />
-                    </IconButton>
+              {passwords.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={4} align="center">
+                    No passwords saved yet.
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : (
+                passwords.map((pw) => (
+                  <TableRow key={pw.website + pw.username}>
+                    <TableCell>{pw.website}</TableCell>
+                    <TableCell>{pw.username}</TableCell>
+                    <TableCell>
+                      {visiblePassword[`${pw.website}-${pw.username}`] ? pw.password : '••••••••'}
+                    </TableCell>
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => togglePasswordVisibility(pw.website, pw.username)}
+                      >
+                        {visiblePassword[`${pw.website}-${pw.username}`] ? <VisibilityOffIcon /> : <VisibilityIcon />}
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => handleEditPassword(pw.website, pw.username)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="error"
+                        onClick={() => deletePassword(pw.website, pw.username)}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleCopyPassword(pw.password)}
+                      >
+                        <FileCopyIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => handleOpenShareModal(pw)}
+                      >
+                        <ShareIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </TableContainer>

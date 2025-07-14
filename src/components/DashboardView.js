@@ -92,7 +92,7 @@ const DashboardView = () => {
 
   const fetchPasswords = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/get-passwords?email=${email}`);
+      const response = await fetch(`https://password-manager-backend-298931957092.us-central1.run.app/get-passwords?email=${email}`);
       const data = await response.json();
       if (Array.isArray(data)) {
         setPasswords(data);
@@ -107,7 +107,7 @@ const DashboardView = () => {
 
   const fetchActivity = async () => {
     try {
-      const response = await fetch("http://127.0.0.1:5000/get-activities", {
+      const response = await fetch("https://password-manager-backend-298931957092.us-central1.run.app/get-activities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -121,12 +121,12 @@ const DashboardView = () => {
 
   const deleteActivity = async (id) => {
     try {
-      await fetch("http://127.0.0.1:5000/delete-activity", {
+      await fetch("https://password-manager-backend-298931957092.us-central1.run.app/delete-activity", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id }),
       });
-      fetchActivity(); // refresh list
+      fetchActivity();
     } catch (err) {
       console.error("Error deleting activity:", err);
     }
@@ -151,7 +151,7 @@ const DashboardView = () => {
         Welcome to your secure password manager dashboard.
       </Typography>
 
-      {/* Summary Cards */}
+
       <Grid container spacing={3} sx={{ mb: 4 }}>
         <Grid item xs={12} sm={4}>
           <Card>
@@ -205,7 +205,7 @@ const DashboardView = () => {
         </Grid>
       </Grid>
 
-      {/* Activity & Security Tips */}
+
       <Grid container spacing={3}>
         <Grid item xs={12} md={6}>
           <Card>

@@ -14,7 +14,7 @@ const OtpVerification = () => {
 
   const handleOtpSubmit = async (values) => {
     try {
-      const response = await axios.post("http://127.0.0.1:5000/verify-otp", { email, otp: values.otp })
+      const response = await axios.post("https://password-manager-backend-298931957092.us-central1.run.app/verify-otp", { email, otp: values.otp })
 
       if (response.data.status === "success") {
         message.success("OTP verified successfully!")
