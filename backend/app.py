@@ -23,9 +23,12 @@ from backup_utils import restore_from_sharded_backup
 from google.cloud import storage as storage
 from datetime import datetime
 from bson import ObjectId
+from config_local import MONGO_URI, AES_KEY
 
 import os
 import base64
+
+
 
 AWS_BUCKET = "vault-password-s3"
 GCS_BUCKET = "vault-password-gcs"
@@ -57,8 +60,7 @@ CORS(app, origins=["https://password-manager-frontend-298931957092.us-central1.r
 # activities_collection = db['recent_activities']
 
 # Replace this with your actual Atlas connection string
-client = MongoClient("mongodb+srv://pratikraj590:QCPa25IuH8bkxF1n@cluster0.ifoletc.mongodb.net/passwordManager?retryWrites=true&w=majority&tls=true&appName=Cluster0")
-
+client = MongoClient(MONGO_URI)
 
 db = client["passwordManager"]
 
@@ -69,7 +71,7 @@ otp_storage = {}
 shared_links = {}
 
 
-key = b"mysecretaeskey16"
+key = AES_KEY
 
 if len(key) not in [16, 24, 32]:
     raise ValueError("Encryption key must be 16, 24, or 32 bytes long")
